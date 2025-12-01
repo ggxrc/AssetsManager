@@ -1,6 +1,8 @@
 [versions]
 agp = "8.12.3"
+coil = "2.5.0"
 daggerCompiler = "2.57.2"
+documentfile = "1.0.1"
 kotlin = "2.0.21"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -21,9 +23,12 @@ runtimeLivedata = "1.9.5"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
-androidx-room-compiler = { module = "androidx.room:room-compiler" }
-androidx-room-ktx = { module = "androidx.room:room-ktx" }
-androidx-room-runtime = { module = "androidx.room:room-runtime" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil" }
+documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "daggerCompiler" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

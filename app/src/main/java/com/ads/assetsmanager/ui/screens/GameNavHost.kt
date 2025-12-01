@@ -31,12 +31,28 @@ fun GameNavHost(viewModel: GameViewModel) {
             arguments = listOf(navArgument("catId") { type = NavType.IntType })
         ) { backStackEntry ->
             val catId = backStackEntry.arguments?.getInt("catId") ?: 0
-            // Chama a função para filtrar no ViewModel
             LaunchedEffect(catId) { viewModel.selectCategory(catId) }
 
             EntityScreen(
-                viewModel, onBack = { navController.popBackStack() },
-                onEntityClick = { }
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onEntityClick = { entityId ->
+                    navController.navigate("resources/$entityId")
+                }
+            )
+        }
+        
+        // Tela 3: Recursos/Assets da Entidade
+        composable(
+            route = "resources/{entityId}",
+            arguments = listOf(navArgument("entityId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val entityId = backStackEntry.arguments?.getInt("entityId") ?: 0
+            LaunchedEffect(entityId) { viewModel.selectEntity(entityId) }
+            
+            ResourceScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
             )
         }
     }

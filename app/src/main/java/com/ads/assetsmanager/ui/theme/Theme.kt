@@ -9,45 +9,70 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+// === GAMER DARK THEME - Always Dark for that Arcade Feel ===
+private val GamerDarkColorScheme = darkColorScheme(
+    // Primary - Neon Cyan para ações principais
+    primary = NeonCyan,
+    onPrimary = DarkBackground,
+    primaryContainer = DarkCard,
+    onPrimaryContainer = NeonCyan,
+    
+    // Secondary - Neon Pink para destaques
+    secondary = NeonPink,
+    onSecondary = DarkBackground,
+    secondaryContainer = DarkCardAlt,
+    onSecondaryContainer = NeonPink,
+    
+    // Tertiary - Neon Green para sucesso/ações positivas
+    tertiary = NeonGreen,
+    onTertiary = DarkBackground,
+    tertiaryContainer = DarkCard,
+    onTertiaryContainer = NeonGreen,
+    
+    // Error - Pixel Red
+    error = PixelRed,
+    onError = Color.White,
+    errorContainer = Color(0xFF3D0A0A),
+    onErrorContainer = PixelRed,
+    
+    // Background & Surface - Dark theme
+    background = DarkBackground,
+    onBackground = TextPrimary,
+    surface = DarkSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = DarkCard,
+    onSurfaceVariant = TextSecondary,
+    
+    // Outline
+    outline = NeonPurple,
+    outlineVariant = Color(0xFF3D3D5C)
 )
 
 @Composable
 fun AssetsManagerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Sempre dark theme para estilo gamer
+    darkTheme: Boolean = true,
+    // Desativando dynamic color para manter o tema customizado
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = GamerDarkColorScheme
+    
+    // Configura a status bar para combinar com o tema
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = DarkBackground.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
     }
 
     MaterialTheme(

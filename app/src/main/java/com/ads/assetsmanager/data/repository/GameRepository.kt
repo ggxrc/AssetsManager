@@ -29,4 +29,9 @@ class GameRepository(private val gameDao: GameDao) {
     suspend fun deleteCategory(category: Category) = gameDao.deleteCategory(category)
     suspend fun deleteEntity(entity: GameEntity) = gameDao.deleteEntity(entity)
     suspend fun deleteResource(resource: EntityResource) = gameDao.deleteResource(resource)
+    
+    // Atualizações
+    suspend fun updateEntity(entity: GameEntity) = gameDao.updateEntity(entity)
+    suspend fun updateEntityThumbnail(entityId: Int, thumbnailUri: String?) = gameDao.updateEntityThumbnail(entityId, thumbnailUri)
+    suspend fun getEntityById(entityId: Int) = gameDao.getEntityById(entityId)
 }

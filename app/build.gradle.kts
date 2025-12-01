@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp") version "2.2.10-2.0.2"
+    id("com.google.devtools.ksp") version "2.0.21-1.0.28"
 }
 
 android {
@@ -53,6 +53,13 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.runtime.livedata)
+    
+    // Coil para carregamento de imagens
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+    
+    // DocumentFile para exportação de pastas
+    implementation(libs.documentfile)
     ksp(libs.dagger.compiler)
 
 

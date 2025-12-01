@@ -21,5 +21,7 @@ data class GameEntity(
     @PrimaryKey(autoGenerate = true) val entityId : Int = 0,
     val categoryId : Int,
     val name : String,
-    val description : String
+    val description : String,
+    val thumbnailUri : String? = null, // Foto de destaque da entidade
+    val lore : String? = null // História/lore da entidade
 )

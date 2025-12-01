@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.ViewModelProvider
 import com.ads.assetsmanager.data.database.GameDatabase
 import com.ads.assetsmanager.data.repository.GameRepository
+import com.ads.assetsmanager.ui.screens.GameNavHost
 import com.ads.assetsmanager.ui.theme.AssetsManagerTheme
 import com.ads.assetsmanager.viewmodel.GameViewModel
 import com.ads.assetsmanager.viewmodel.GameViewModelFactory
@@ -29,7 +30,7 @@ class MainActivity : ComponentActivity() {
         val viewModel = ViewModelProvider(this, factory)[GameViewModel::class.java]
 
         setContent {
-            GameAssetManagerTheme { // Seu tema padrão
+            AssetsManagerTheme { // Seu tema padrão
                 GameNavHost(viewModel)
             }
         }

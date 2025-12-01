@@ -41,6 +41,14 @@ interface GameDao {
     @Transaction
     @Query("SELECT * FROM game_entities WHERE entityId = :entityId")
     fun getEntityWithResources(entityId: Int): Flow<EntityWithResources>
+    
+    // Busca Entidade individual
+    @Query("SELECT * FROM game_entities WHERE entityId = :entityId")
+    suspend fun getEntityById(entityId: Int): GameEntity?
+    
+    // Atualiza apenas o thumbnail da entidade
+    @Query("UPDATE game_entities SET thumbnailUri = :thumbnailUri WHERE entityId = :entityId")
+    suspend fun updateEntityThumbnail(entityId: Int, thumbnailUri: String?)
 
     // --- Update ---
     @Update
