@@ -1,6 +1,8 @@
 package com.ads.assetsmanager.ui.screens
 
+import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -55,8 +57,52 @@ fun ResourceScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf<String?>(null) }
+    var resourceToEdit by remember { mutableStateOf<EntityResource?>(null) }
 
     val currentData = entityWithResources
+    
+    // Função para abrir assets com o app apropriado
+    fun openAsset(resource: EntityResource) {
+        try {
+            when (resource.type) {
+                ResourceType.LINK -> {
+                    // Abrir URL no navegador
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(resource.value))
+                    context.startActivity(intent)
+                }
+                ResourceType.TEXT -> {
+                    // Para texto, não há nada para abrir externamente
+                    Toast.makeText(context, "Texto: ${resource.label}", Toast.LENGTH_SHORT).show()
+                }
+                else -> {
+                    // Para SPRITE, ANIMATION, AUDIO - abrir com app padrão
+                    val uri = Uri.parse(resource.value)
+                    val mimeType = resource.mimeType ?: when (resource.type) {
+                        ResourceType.SPRITE, ResourceType.ANIMATION -> "image/*"
+                        ResourceType.AUDIO -> "audio/*"
+                        else -> "*/*"
+                    }
+                    
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    
+                    if (intent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(intent)
+                    } else {
+                        // Fallback: tentar abrir sem especificar tipo
+                        val fallbackIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(fallbackIntent, "Abrir com..."))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Não foi possível abrir o arquivo", Toast.LENGTH_SHORT).show()
+        }
+    }
     
     // Launcher para criar arquivo ZIP
     val createZipLauncher = rememberLauncherForActivityResult(
@@ -202,6 +248,8 @@ fun ResourceScreen(
                                 resource = resource,
                                 entityId = ownerId,
                                 onDelete = { viewModel.deleteResource(resource) },
+                                onEdit = { resourceToEdit = resource },
+                                onOpen = { openAsset(resource) },
                                 onSetAsThumbnail = if (resource.type == ResourceType.SPRITE) {
                                     { viewModel.setAsEntityThumbnail(ownerId, resource.value) }
                                 } else null
@@ -218,6 +266,18 @@ fun ResourceScreen(
                     onConfirm = { type, uri, label, mimeType, fileName, fileSize ->
                         viewModel.insertResource(ownerId, type, uri, label, mimeType, fileName, fileSize)
                         showAddDialog = false
+                    }
+                )
+            }
+            
+            // Dialog para editar recurso
+            resourceToEdit?.let { resource ->
+                EditResourceDialog(
+                    resource = resource,
+                    onDismiss = { resourceToEdit = null },
+                    onConfirm = { updatedResource ->
+                        viewModel.updateResource(updatedResource)
+                        resourceToEdit = null
                     }
                 )
             }
@@ -395,6 +455,8 @@ fun ResourceItem(
     resource: EntityResource,
     entityId: Int,
     onDelete: () -> Unit,
+    onEdit: () -> Unit,
+    onOpen: () -> Unit,
     onSetAsThumbnail: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -408,9 +470,12 @@ fun ResourceItem(
     }
     
     val isImage = resource.type == ResourceType.SPRITE || resource.type == ResourceType.ANIMATION
+    val canOpen = resource.type != ResourceType.TEXT // Texto não tem arquivo para abrir
 
     GamerCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpen() }, // Clicar no card abre o asset
         borderColor = color,
         glowEnabled = false
     ) {
@@ -485,6 +550,28 @@ fun ResourceItem(
                     )
                 }
                 
+                // Para TEXT, mostrar parte do conteúdo
+                if (resource.type == ResourceType.TEXT) {
+                    Text(
+                        text = resource.value.take(50) + if (resource.value.length > 50) "..." else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                
+                // Para LINK, mostrar a URL
+                if (resource.type == ResourceType.LINK) {
+                    Text(
+                        text = resource.value,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = LinkColor.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -503,7 +590,45 @@ fun ResourceItem(
             }
             
             // Ações
-            Row {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Botão de abrir asset (para todos exceto TEXT)
+                if (canOpen) {
+                    IconButton(
+                        onClick = onOpen,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                color = NeonCyan.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (resource.type == ResourceType.LINK) Icons.Default.OpenInBrowser else Icons.Default.OpenInNew,
+                            contentDescription = "Abrir",
+                            tint = NeonCyan,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                
+                // Botão de editar
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            color = NeonPink.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar",
+                        tint = NeonPink,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                
                 // Botão de definir como perfil (apenas para sprites)
                 if (onSetAsThumbnail != null) {
                     IconButton(
@@ -522,9 +647,9 @@ fun ResourceItem(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
                 }
                 
+                // Botão de excluir
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier
@@ -1049,4 +1174,342 @@ private fun formatFileSize(bytes: Long): String {
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
         else -> "${bytes / (1024 * 1024)} MB"
     }
+}
+
+@Composable
+fun EditResourceDialog(
+    resource: EntityResource,
+    onDismiss: () -> Unit,
+    onConfirm: (EntityResource) -> Unit
+) {
+    val context = LocalContext.current
+    var label by remember { mutableStateOf(resource.label) }
+    var textContent by remember { mutableStateOf(if (resource.type == ResourceType.TEXT) resource.value else "") }
+    var linkUrl by remember { mutableStateOf(if (resource.type == ResourceType.LINK) resource.value else "") }
+    var selectedUri by remember { mutableStateOf<Uri?>(if (resource.type != ResourceType.TEXT && resource.type != ResourceType.LINK) Uri.parse(resource.value) else null) }
+    var selectedFileName by remember { mutableStateOf(resource.fileName) }
+    var selectedMimeType by remember { mutableStateOf(resource.mimeType) }
+    var selectedFileSize by remember { mutableStateOf(resource.fileSize) }
+    
+    val resourceType = resource.type
+    val (icon, color) = when (resourceType) {
+        ResourceType.SPRITE -> Icons.Default.Image to ImageColor
+        ResourceType.ANIMATION -> Icons.Default.Animation to NeonPurple
+        ResourceType.AUDIO -> Icons.Default.Audiotrack to AudioColor
+        ResourceType.TEXT -> Icons.Default.Description to TextColor
+        ResourceType.LINK -> Icons.Default.Link to LinkColor
+        else -> Icons.Default.Attachment to TextSecondary
+    }
+    
+    // File picker para sprites (imagens estáticas)
+    val spritePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            selectedUri = it
+            selectedMimeType = context.contentResolver.getType(it)
+            
+            context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                cursor.moveToFirst()
+                selectedFileName = if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                selectedFileSize = if (sizeIndex >= 0) cursor.getLong(sizeIndex) else null
+            }
+        }
+    }
+    
+    // File picker para animações (GIF e spritesheets)
+    val animationPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            selectedUri = it
+            selectedMimeType = context.contentResolver.getType(it)
+            context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                cursor.moveToFirst()
+                selectedFileName = if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                selectedFileSize = if (sizeIndex >= 0) cursor.getLong(sizeIndex) else null
+            }
+        }
+    }
+    
+    // File picker para áudio
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            selectedUri = it
+            selectedMimeType = context.contentResolver.getType(it)
+            context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                cursor.moveToFirst()
+                selectedFileName = if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                selectedFileSize = if (sizeIndex >= 0) cursor.getLong(sizeIndex) else null
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkCard,
+        shape = RoundedCornerShape(8.dp),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = color
+                )
+                Text(
+                    text = "EDITAR ${resourceType.uppercase()}",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = color
+                )
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Tipo do recurso (não editável, apenas informativo)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = color.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Tipo: $resourceType",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = color
+                        )
+                        Text(
+                            text = "O tipo não pode ser alterado",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted
+                        )
+                    }
+                }
+                
+                // Campo de nome
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text("Nome do Asset") },
+                    placeholder = { Text("Ex: Sprite Idle, Som de Ataque...") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = color,
+                        unfocusedBorderColor = NeonPurple.copy(alpha = 0.5f),
+                        focusedLabelColor = color,
+                        cursorColor = color
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                // Conteúdo específico por tipo
+                when (resourceType) {
+                    ResourceType.SPRITE -> {
+                        FilePickerButton(
+                            label = "Trocar Imagem",
+                            selectedFileName = selectedFileName ?: "Arquivo atual",
+                            color = ImageColor,
+                            onClick = { spritePickerLauncher.launch(ResourceType.SPRITE_MIME_TYPES) }
+                        )
+                        
+                        // Preview se selecionado
+                        selectedUri?.let { uri ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .background(DarkSurface, RoundedCornerShape(4.dp))
+                                    .border(1.dp, ImageColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .clip(RoundedCornerShape(4.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Preview",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                    
+                    ResourceType.ANIMATION -> {
+                        FilePickerButton(
+                            label = "Trocar GIF/Spritesheet",
+                            selectedFileName = selectedFileName ?: "Arquivo atual",
+                            color = NeonPurple,
+                            onClick = { animationPickerLauncher.launch(ResourceType.ANIMATION_MIME_TYPES) }
+                        )
+                        
+                        selectedUri?.let { uri ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .background(DarkSurface, RoundedCornerShape(4.dp))
+                                    .border(1.dp, NeonPurple.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .clip(RoundedCornerShape(4.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(uri)
+                                        .decoderFactory(
+                                            if (android.os.Build.VERSION.SDK_INT >= 28)
+                                                ImageDecoderDecoder.Factory()
+                                            else
+                                                GifDecoder.Factory()
+                                        )
+                                        .build(),
+                                    contentDescription = "Preview",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                    
+                    ResourceType.AUDIO -> {
+                        FilePickerButton(
+                            label = "Trocar Áudio",
+                            selectedFileName = selectedFileName ?: "Arquivo atual",
+                            color = AudioColor,
+                            onClick = { audioPickerLauncher.launch(ResourceType.AUDIO_MIME_TYPES) }
+                        )
+                        
+                        selectedUri?.let {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(DarkSurface, RoundedCornerShape(4.dp))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Audiotrack,
+                                    contentDescription = null,
+                                    tint = AudioColor
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = selectedFileName ?: "Áudio selecionado",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextPrimary
+                                    )
+                                    selectedFileSize?.let { size ->
+                                        Text(
+                                            text = formatFileSize(size),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    ResourceType.TEXT -> {
+                        OutlinedTextField(
+                            value = textContent,
+                            onValueChange = { textContent = it },
+                            label = { Text("Conteúdo") },
+                            placeholder = { Text("Digite o texto, lore, descrição...") },
+                            minLines = 4,
+                            maxLines = 6,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = TextColor,
+                                unfocusedBorderColor = NeonPurple.copy(alpha = 0.5f),
+                                focusedLabelColor = TextColor,
+                                cursorColor = TextColor
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    
+                    ResourceType.LINK -> {
+                        OutlinedTextField(
+                            value = linkUrl,
+                            onValueChange = { linkUrl = it },
+                            label = { Text("URL") },
+                            placeholder = { Text("https://...") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = LinkColor,
+                                unfocusedBorderColor = NeonPurple.copy(alpha = 0.5f),
+                                focusedLabelColor = LinkColor,
+                                cursorColor = LinkColor
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            NeonButton(
+                onClick = {
+                    if (label.isNotBlank()) {
+                        val newValue = when (resourceType) {
+                            ResourceType.TEXT -> textContent
+                            ResourceType.LINK -> linkUrl
+                            else -> selectedUri?.toString() ?: resource.value
+                        }
+                        if (newValue.isNotBlank()) {
+                            onConfirm(
+                                resource.copy(
+                                    label = label,
+                                    value = newValue,
+                                    mimeType = selectedMimeType ?: resource.mimeType,
+                                    fileName = selectedFileName ?: resource.fileName,
+                                    fileSize = selectedFileSize ?: resource.fileSize
+                                )
+                            )
+                        }
+                    }
+                },
+                text = "Salvar",
+                icon = Icons.Default.Save,
+                color = NeonGreen
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "CANCELAR", color = PixelRed)
+            }
+        }
+    )
 }

@@ -97,6 +97,11 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         repository.deleteResource(resource)
     }
     
+    // Atualizar recurso existente
+    fun updateResource(resource: EntityResource) = viewModelScope.launch {
+        repository.updateResource(resource)
+    }
+    
     // --- Exportação ---
     fun exportEntityAsZip(
         context: Context,

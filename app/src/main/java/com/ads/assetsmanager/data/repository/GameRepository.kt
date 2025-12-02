@@ -33,5 +33,6 @@ class GameRepository(private val gameDao: GameDao) {
     // Atualizações
     suspend fun updateEntity(entity: GameEntity) = gameDao.updateEntity(entity)
     suspend fun updateEntityThumbnail(entityId: Int, thumbnailUri: String?) = gameDao.updateEntityThumbnail(entityId, thumbnailUri)
+    suspend fun updateResource(resource: EntityResource) = gameDao.updateResource(resource)
     suspend fun getEntityById(entityId: Int) = gameDao.getEntityById(entityId)
 }
